@@ -13,7 +13,7 @@ use Fcntl qw/:seek/;
 
 our @ISA = qw(Inline);
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 $Inline::Lua::_undef = undef;
 
@@ -78,7 +78,6 @@ sub build {
     open LUA, ">$obj" or croak "Can't open $obj for output: $!";
     print LUA <<EOCODE;
 package $caller;
-use blib '/home/ethan/Projects/dists/inline-lua/Inline-Lua/';
 require Inline::Lua;
 EOCODE
     
