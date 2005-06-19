@@ -1,5 +1,9 @@
 Revision history for Perl extension Inline::Lua.
 
+0.03  Sun Jun 19 17:22:34 CEST 2005
+	- lua is actually called lua50 on Debian: 
+	  Do Makefile.PL deal with it	
+
 0.02  Fri Jun 25 07:00:14 CEST 2004
 	- Inline::Lua generated Perl subs that had a rotten
 	  'use lib' statement which only worked on my machine

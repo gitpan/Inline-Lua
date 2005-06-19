@@ -13,7 +13,7 @@ use Fcntl qw/:seek/;
 
 our @ISA = qw(Inline);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 $Inline::Lua::_undef = undef;
 
@@ -691,7 +691,7 @@ Tassilo von Parseval, E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004 by Tassilo von Parseval
+Copyright (C) 2004-2005 by Tassilo von Parseval
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,

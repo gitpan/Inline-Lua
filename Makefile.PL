@@ -2,11 +2,27 @@ use 5.006;
 use ExtUtils::MakeMaker;
 use Config;
 
+use constant LUA_LIBS	=> 1;
+use constant LUA_INC	=> 2;
+
+sub lua_conf {
+    my $meth = shift;
+    # lua-config is Debian specific
+    if ($meth == LUA_LIBS) {
+	chomp (my $val = `lua-config --libs` || "-llua -llualib");
+	return $val;
+    }
+    if ($meth == LUA_INC) {
+	chomp (my $val = `lua-config --include` || "");
+	return $val;
+    }
+}
+
 sub have_lua {
     my $CC = $Config{cc};
     my %args = map { split /\s*=\s*/ } @ARGV;
-    my $LIBS = $args{ LIBS } || "-llua -llualib";
-    my $INC = $args{ INC };
+    $LIBS = $args{ LIBS } || lua_conf(LUA_LIBS);
+    $INC = $args{ INC } || lua_conf(LUA_INC);
     return 1 if system("$CC check.c $INC $LIBS 2>/dev/null") == 0;
     return 0;
 }
@@ -34,9 +50,9 @@ WriteMakefile(
     ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM  => 'lib/Inline/Lua.pm', # retrieve abstract from module
        AUTHOR         => 'Tassilo von Parseval <tassilo.von.parseval@rwth-aachen.de>') : ()),
-    LIBS              => ['-llua -llualib'], 
+    LIBS              => [ $LIBS ], 
     DEFINE            => '', 
-    INC               => '-I.', 
+    INC               => "-I. " . $INC, 
     clean	      => { FILES => "_Inline a.out" },
 );
 if  (eval {require ExtUtils::Constant; 1}) {

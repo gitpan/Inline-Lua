@@ -1,4 +1,4 @@
-Inline-Lua version 0.02
+Inline-Lua version 0.03
 =======================
 
 Use inlined Lua code from Perl. See http://www.lua.org/ for details on Lua.
@@ -16,13 +16,14 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
+    Inline
     Test::More
     Lua 5.0	(this module actually tested on 5.0.2)
     C compiler
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2004 by Tassilo von Parseval
+Copyright (C) 2004-2005 by Tassilo von Parseval
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,
