@@ -1,3 +1,64 @@
+package Inline::Lua::Boolean;
+
+use warnings;
+use strict;
+
+use overload
+	fallback	=> undef,
+	'0+'		=> \&tonumber,
+	'+'		=> \&add,
+	'-'		=> \&sub,
+	'<=>'		=> \&cmp,
+	'cmp'		=> \&cmp;
+
+
+sub TRUE  { __PACKAGE__->new(1) }
+sub FALSE { __PACKAGE__->new(0) }
+
+
+sub new {
+        my $class       = shift;
+        my $bool        = (shift)? 1 : 0;
+        my $self        = bless \$bool, $class;
+
+        return $self;
+} # new
+
+
+sub add {
+	my $self	= shift;
+	my $rop		= shift;
+
+	return int($self) + $rop;
+} # add
+
+
+sub sub {
+	my $self	= shift;
+	my $rop		= shift;
+	my $swap	= shift;
+
+	return ($swap)? $rop - int($self) : int($self) - $rop;
+} # sub
+
+
+sub cmp {
+	my $self	= shift;
+	my $rop		= shift;
+	my $swap	= shift;
+
+	return ($swap)? ($rop <=> int($self)) : (int($self) <=> $rop);
+} # cmp
+
+
+sub tonumber {
+	my $self	= shift;
+
+	return (${$self})? 1 : 0;
+} # tonumber
+
+
+1;
 package Inline::Lua;
 
 use 5.006;
@@ -13,7 +74,7 @@ use Fcntl qw/:seek/;
 
 our @ISA = qw(Inline);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 $Inline::Lua::_undef = undef;
 
@@ -691,12 +752,12 @@ Tassilo von Parseval, E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004-2005 by Tassilo von Parseval
+Copyright (C) 2004-2007 by Tassilo von Parseval
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.4 or,
 at your option, any later version of Perl 5 you may have available.
 
-Lua 5.0 Copyright (C) 2003-2004 Tecgraf, PUC-Rio.
+Lua-5.1.2 Copyright (C) 1994-2007 Lua.org, PUC-Rio.
 
 =cut

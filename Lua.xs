@@ -2,6 +2,10 @@
 #include "perl.h"
 #include "XSUB.h"
 
+#ifdef PERL_UNUSED_DECL
+#   undef PERL_UNUSED_DECL
+#endif
+
 #include "ppport.h"
 
 #include "const-c.inc"
@@ -18,6 +22,7 @@ void push_hash	    (lua_State *, HV*);
 void push_val	    (lua_State *, SV*);
 void push_func	    (lua_State *, CV*);
 
+SV* bool_ref	    (lua_State *, int);
 SV* table_ref	    (lua_State *, int);
 SV* func_ref	    (lua_State *L);
 SV* user_data	    (lua_State *L);
@@ -159,21 +164,26 @@ push_io (lua_State *L, PerlIO *pio) {
 void
 push_ref (lua_State *L, SV *val) {
 
-    switch (SvTYPE(val)) {
+    switch (SvTYPE(SvRV(val))) {
 	case SVt_PVAV:
-	    push_ary(L, (AV*)val);
+	    push_ary(L, (AV*)SvRV(val));
 	    return;
 	case SVt_PVHV:
-	    push_hash(L, (HV*)val);
+	    push_hash(L, (HV*)SvRV(val));
 	    return;
 	case SVt_PVCV:
-	    push_func(L, (CV*)val);
+	    push_func(L, (CV*)SvRV(val));
 	    return;
 	case SVt_PVGV:
-	    push_io(L, IoIFP(sv_2io(val)));
+	    push_io(L, IoIFP(sv_2io(SvRV(val))));
 	    return;
 	default:
-	    croak("Attempt to pass unsupported reference type (%s) to Lua", sv_reftype(val, 0));
+	    if (sv_derived_from(val, "Inline::Lua::Boolean")) {
+	        lua_pushboolean(L, !!SvIV(SvRV(val)));
+	        return;
+	    } else {
+	        croak("Attempt to pass unsupported reference type (%s) to Lua", sv_reftype(SvRV(val), 0));
+	    }
     }
 }
 
@@ -200,7 +210,7 @@ push_val (lua_State *L, SV *val) {
 
     switch (SvTYPE(val)) {
 	case SVt_RV:
-	    push_ref(L, SvRV(val));
+	    push_ref(L, val);
 	    return;
 	case SVt_IV: 
 	    lua_pushnumber(L, (lua_Number)SvIV(val));
@@ -230,7 +240,7 @@ luaval_to_perl (lua_State *L, int idx, int *dopop) {
 	case LUA_TNIL:
 	    return &PL_sv_undef;
 	case LUA_TBOOLEAN:
-	    return lua_toboolean(L, idx) ? &PL_sv_yes : &PL_sv_no;
+	    return bool_ref(L, lua_toboolean(L, idx));
 	case LUA_TNUMBER:
 	    return newSVnv(lua_tonumber(L, idx));
 	case LUA_TSTRING:
@@ -261,7 +271,7 @@ lua_main_return (lua_State *L, int idx, int num) {
 	    case LUA_TNIL:
 		av_store(INLINE_RETURN, 0, &PL_sv_undef);
 	    case LUA_TBOOLEAN:
-		    av_store(INLINE_RETURN, 0, lua_toboolean(L, top) ? &PL_sv_yes : &PL_sv_no);
+		    av_store(INLINE_RETURN, 0, bool_ref(L, lua_toboolean(L, top)));
 		    break;
 	    case LUA_TNUMBER:
 		    av_store(INLINE_RETURN, 0, newSVnv(lua_tonumber(L, top)));
@@ -316,8 +326,8 @@ add_pair (lua_State *L, SV **any, int *isary) {
     int dopop;
     
     if (*isary && lua_type(L, KEY) != LUA_TNUMBER) {
-	*isary = 0;
 	HV *tbl = ary_to_hash((AV*)*any);
+	*isary = 0;
 	*any = (SV*)tbl;
     }
 
@@ -359,6 +369,19 @@ add_pair (lua_State *L, SV **any, int *isary) {
     return dopop;
 }
 
+/* Return our Inline::Lua::Boolean datatype.
+ *
+ * TODO: Try to do this only once (or twice), and return the same TRUE or
+ * FALSE reference subsequently. */
+SV*
+bool_ref (lua_State *L, int b) {
+    if (b) {
+        return eval_pv("Inline::Lua::Boolean::TRUE", 1);
+    } else {
+        return eval_pv("Inline::Lua::Boolean::FALSE", 1);
+    }
+}
+
 /* The Lua table being in the stack at 'idx' is turned into a
  * Perl AV _or_ HV (depending on whether the lua table has a stringy
  * key in it and a reference to that is returned */
@@ -372,7 +395,7 @@ table_ref (lua_State *L, int idx) {
 	if (add_pair(L, (SV**)&tbl,  &isary))
 	    lua_pop(L, 1);
     }
-    return newRV_inc((SV*)tbl);
+    return newRV_noinc((SV*)tbl);
 }
 
 /* When a Lua function returns a function to perl, a reference
@@ -466,12 +489,16 @@ interpreter (CLASS, ...)
 	    if (!INTERPRETER) {
 		RETVAL = INTERPRETER = lua_open();
 		if (INTERPRETER) {
+#if LUA_VERSION_NUM >= 501
+		    luaL_openlibs(INTERPRETER);
+#else
 		    luaopen_base(INTERPRETER);
 		    luaopen_table(INTERPRETER);
 		    luaopen_io(INTERPRETER);
 		    luaopen_string(INTERPRETER);
 		    luaopen_debug(INTERPRETER);
 		    luaopen_loadlib(INTERPRETER);
+#endif
 		}
 	    }
 	    else
@@ -583,7 +610,7 @@ call (lua, func, nargs, ...)
 		    ST(nargs - j++) = sv_2mortal(newSVnv(lua_tonumber(lua, i)));
 		    break;
 		case LUA_TBOOLEAN:
-		    ST(nargs - j++) = lua_toboolean(lua, i) ? &PL_sv_yes : &PL_sv_no;
+		    ST(nargs - j++) = sv_2mortal(bool_ref(lua, lua_toboolean(lua, i)));
 		    break;
 		case LUA_TSTRING:
 		    {
