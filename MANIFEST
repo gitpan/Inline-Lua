@@ -14,3 +14,4 @@ fallback/const-xs.inc
 lib/Inline/Lua.pm
 typemap
 META.yml                                 Module meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)
