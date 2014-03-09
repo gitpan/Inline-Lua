@@ -1,66 +1,7 @@
-package Inline::Lua::Boolean;
-
-use warnings;
-use strict;
-
-use overload
-	fallback	=> undef,
-	'0+'		=> \&tonumber,
-	'+'		=> \&add,
-	'-'		=> \&sub,
-	'<=>'		=> \&cmp,
-	'cmp'		=> \&cmp;
-
-
-sub TRUE  { __PACKAGE__->new(1) }
-sub FALSE { __PACKAGE__->new(0) }
-
-
-sub new {
-        my $class       = shift;
-        my $bool        = (shift)? 1 : 0;
-        my $self        = bless \$bool, $class;
-
-        return $self;
-} # new
-
-
-sub add {
-	my $self	= shift;
-	my $rop		= shift;
-
-	return int($self) + $rop;
-} # add
-
-
-sub sub {
-	my $self	= shift;
-	my $rop		= shift;
-	my $swap	= shift;
-
-	return ($swap)? $rop - int($self) : int($self) - $rop;
-} # sub
-
-
-sub cmp {
-	my $self	= shift;
-	my $rop		= shift;
-	my $swap	= shift;
-
-	return ($swap)? ($rop <=> int($self)) : (int($self) <=> $rop);
-} # cmp
-
-
-sub tonumber {
-	my $self	= shift;
-
-	return (${$self})? 1 : 0;
-} # tonumber
-
-
-1;
+## no critic (RequireUseStrict)
 package Inline::Lua;
-
+$Inline::Lua::VERSION = '0.06';
+## use critic (RequireUseStrict)
 use 5.006;
 use strict;
 use warnings;
@@ -69,12 +10,9 @@ use Carp;
 require Exporter;
 use AutoLoader;
 require Inline;
-use Data::Dumper;
 use Fcntl qw/:seek/;
 
 our @ISA = qw(Inline);
-
-our $VERSION = '0.05';
 
 $Inline::Lua::_undef = undef;
 
@@ -103,6 +41,7 @@ sub validate {
 	    Inline::Lua->register_undef($val);
 	}
     }
+    return;
 }
 
 sub build {
@@ -136,24 +75,27 @@ sub build {
 	$lua->compile($o->{API}{code}, "$obj.bc", 1);
     } 
      
-    open LUA, ">$obj" or croak "Can't open $obj for output: $!";
-    print LUA <<EOCODE;
+    my $lua_fh;
+    open $lua_fh, '>', $obj or croak "Can't open $obj for output: $!"; ## no critic (InputOutput::RequireBriefOpen)
+    print $lua_fh <<EOCODE;
 package $caller;
 require Inline::Lua;
 EOCODE
     
     for (@funcs) {
 	my ($name, $func) = each %$_;
-	print LUA <<EOCODE;
+	print $lua_fh <<EOCODE;
 sub $name {
     \$lua->call(\"$name\", @{[ scalar grep $_ ne '...', @{ $func->{proto} } ]}, \@_);
 }
 EOCODE
     }
 
-    print LUA <<EOCODE;
+    print $lua_fh <<EOCODE;
 1;
 EOCODE
+    close $lua_fh;
+    return;
 }
 
 sub load {
@@ -161,22 +103,26 @@ sub load {
     my $obj = $o->{API}{location};
     {
 	local $/;
-	open BC, "$o->{API}{location}.bc" 
+        my $bc_fh;
+	open $bc_fh, '<', $obj . '.bc'
 	    or die "Bytecode mysteriously vanished: $!";
-	my $bc = <BC>;
+	my $bc = <$bc_fh>;
+        close $bc_fh;
 	($o->{ILSM}{lua} = Inline::Lua->interpreter)->compile($bc, "", 0);
     }
-    open LUA, "<$obj" or croak "Can't oben $obj for input: $!";
+    my $lua_fh;
+    open $lua_fh, '<', $obj or croak "Can't open $obj for input: $!"; ## no critic (InputOutput::RequireBriefOpen)
     {
 	local $/;
 	my $lua = $o->{ILSM}{lua};
-	my $code = <LUA>;
-	eval <<EOCODE;
+	my $code = <$lua_fh>;
+	eval <<EOCODE; ## no critic
 my \$lua = Inline::Lua->interpreter;
 $code;
 EOCODE
     }
-    close LUA;
+    close $lua_fh;
+    return;
 }
   
 sub create_func_ref {
@@ -197,28 +143,89 @@ sub AUTOLOAD {
     my ($error, $val) = constant($constname);
     if ($error) { croak $error; }
     {
-	no strict 'refs';
-	# Fixed between 5.005_53 and 5.005_61
-#XXX	if ($] >= 5.00561) {
-#XXX	    *$AUTOLOAD = sub () { $val };
-#XXX	}
-#XXX	else {
-	    *$AUTOLOAD = sub { $val };
-#XXX	}
+	no strict 'refs'; ## no critic (TestingAndDebugging::ProhibitNoStrict)
+        *$AUTOLOAD = sub { $val };
     }
     goto &$AUTOLOAD;
 }
 
 require XSLoader;
-XSLoader::load('Inline::Lua', $VERSION);
+XSLoader::load('Inline::Lua', $Inline::Lua::VERSION);
+
+package # hide from PAUSE
+    Inline::Lua::Boolean;
+
+use warnings;
+use strict;
+
+use overload
+	fallback	=> undef,
+	'0+'		=> \&tonumber,
+	'+'		=> \&add,
+	'-'		=> \&subtract,
+	'<=>'		=> \&compare,
+	'cmp'		=> \&compare;
+
+
+sub TRUE  { return __PACKAGE__->new(1) }
+sub FALSE { return __PACKAGE__->new(0) }
+
+
+sub new {
+        my $class       = shift;
+        my $bool        = (shift)? 1 : 0;
+        my $self        = bless \$bool, $class;
+
+        return $self;
+} # new
+
+
+sub add {
+	my $self	= shift;
+	my $rop		= shift;
+
+	return int($self) + $rop;
+} # add
+
+
+sub subtract {
+	my $self	= shift;
+	my $rop		= shift;
+	my $swap	= shift;
+
+	return ($swap)? $rop - int($self) : int($self) - $rop;
+} # subtract
+
+
+sub compare {
+	my $self	= shift;
+	my $rop		= shift;
+	my $swap	= shift;
+
+	return ($swap)? ($rop <=> int($self)) : (int($self) <=> $rop);
+} # compare
+
+
+sub tonumber {
+	my $self	= shift;
+
+	return (${$self})? 1 : 0;
+} # tonumber
 
 
 1;
-__END__
+
+=pod
+
+=encoding UTF-8
 
 =head1 NAME
 
 Inline::Lua - Perl extension for embedding Lua scripts into Perl code
+
+=head1 VERSION
+
+version 0.06
 
 =head1 SYNOPSIS
 
@@ -343,7 +350,6 @@ you'll get a fatal error from Lua when you try
 Inline::Lua offers some means to deal with this problem. See L<"DEALING WITH
 UNDEF AND NIL"> further below.
 
-
 =head2 Array and hash references
 
 Those are turned into Lua tables:
@@ -400,7 +406,7 @@ function references as arguments and the Lua code will do the right thing:
     }
     
     map_print( \&dump, { key1 => 1, key2 => 2 } );
-   
+
 Here's a bit of currying. The Lua code calls the code-reference passed to it.
 This code-reference itself returns a reference to a Perl functions which eventually
 is triggered by Lua and its result is printed:
@@ -504,7 +510,6 @@ keys are numbers, then an array-ref is returned. Otherwise a hash-ref:
               '2' => '2',
               'key' => 'val'
             };
-
 
 A couple of things worthy mention: Lua table indexes start at 1 as opposed to 0
 in Perl. Inline::Lua will substract 1 from the index if the table is returned
@@ -740,6 +745,14 @@ If you encounter any of the above, please report it to me.
 
 =back
 
+=head1 FAQ
+
+=head2 What do I do if I want to sandbox my code?
+
+Many solutions exist for this, and determining which one to use depends on
+your needs.  Please consult http://lua-users.org/wiki/SandBoxes for more
+information.
+
 =head1 SEE ALSO
 
 L<Inline>
@@ -748,18 +761,27 @@ Lua's home can be found at L<http://www.lua.org/>.
 
 =head1 AUTHOR
 
-Tassilo von Parseval, E<lt>tassilo.von.parseval@rwth-aachen.deE<gt>
-Rob Hoelz E<lt>rob@hoelz.roE<gt>
+Rob Hoelz <rob@hoelz.ro>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright (C) 2004-2007 by Tassilo von Parseval
-Copyright (C) 2012 Rob Hoelz
+This software is copyright (c) 2014 by Rob Hoelz.
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself, either Perl version 5.8.4 or,
-at your option, any later version of Perl 5 you may have available.
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
-Lua-5.1.2 Copyright (C) 1994-2007 Lua.org, PUC-Rio.
+=head1 BUGS
+
+Please report any bugs or feature requests on the bugtracker website
+https://github.com/hoelzro/inline-lua/issues
+
+When submitting a bug or request, please include a test-file or a
+patch to an existing test-file that illustrates the bug or desired
+feature.
 
 =cut
+
+__END__
+
+# ABSTRACT: Perl extension for embedding Lua scripts into Perl code
+

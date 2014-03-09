@@ -77,6 +77,8 @@ sub have_lua {
     return 0;
 }
 
+
+
 if (! have_lua()) {
     die <<EOD;
 *******************************************
@@ -92,14 +94,22 @@ EOD
 
 WriteMakefile(
     NAME              => 'Inline::Lua',
-    VERSION_FROM      => 'lib/Inline/Lua.pm',
-    PREREQ_PM         => {
-        'Test::More' => 0,
-        'Inline'     => 0,
-    },
-    ($] >= 5.005 ?     ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM  => 'lib/Inline/Lua.pm', # retrieve abstract from module
-       AUTHOR         => ['Tassilo von Parseval <tassilo.von.parseval@rwth-aachen.de>', 'Rob Hoelz <rob@hoelz.ro>']) : ()),
+  'ABSTRACT' => 'Perl extension for embedding Lua scripts into Perl code',
+  'AUTHOR' => 'Rob Hoelz <rob@hoelz.ro>',
+  'LICENSE' => 'perl',
+  'VERSION' => '0.06',
+  'CONFIGURE_REQUIRES' => {
+    'ExtUtils::MakeMaker' => '6.30'
+  },
+  'PREREQ_PM' => {
+    'Inline' => '0'
+  },
+  'TEST_REQUIRES' => {
+    'File::Spec' => '0',
+    'IO::Handle' => '0',
+    'IPC::Open3' => '0',
+    'Test::More' => '0'
+  },
     LIBS              => [ $LIBS ],
     DEFINE            => '',
     INC               => "-I. " . $INC,
@@ -128,3 +138,5 @@ else {
     copy ($fallback, $file) or die "Can't copy $fallback to $file: $!";
   }
 }
+
+
