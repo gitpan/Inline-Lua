@@ -1,6 +1,7 @@
 Revision history for Perl extension Inline::Lua.
 
-0.06 March 09 2014
+0.07 March 10 2014
+        - Improve Lua detection
 
 0.06 March 09 2014
         - Fix a memory leak (Thanks damiens-robert!)
