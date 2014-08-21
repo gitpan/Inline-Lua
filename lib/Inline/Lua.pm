@@ -1,6 +1,6 @@
 ## no critic (RequireUseStrict)
 package Inline::Lua;
-$Inline::Lua::VERSION = '0.08';
+$Inline::Lua::VERSION = '0.09';
 ## use critic (RequireUseStrict)
 use 5.006;
 use strict;
@@ -30,7 +30,7 @@ sub validate {
     
     while (@_) {
 	my ($key, $val) = splice @_, 0, 2;
-	if ($key eq 'Undef') {
+	if (uc $key eq 'UNDEF') {
 	    # Don't think I am stupid because I am going through those hoops to
 	    # pass a reference correctly.  If I don't do it that way, an SvPVIV
 	    # (with the ROK flag set!) is passed for some reason.
@@ -225,7 +225,7 @@ Inline::Lua - Perl extension for embedding Lua scripts into Perl code
 
 =head1 VERSION
 
-version 0.08
+version 0.09
 
 =head1 SYNOPSIS
 

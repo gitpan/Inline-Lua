@@ -23,4 +23,4 @@ resources:
   bugtracker: https://github.com/hoelzro/inline-lua/issues
   homepage: https://github.com/hoelzro/inline-lua
   repository: https://github.com/hoelzro/inline-lua.git
-version: '0.08'
+version: '0.09'
